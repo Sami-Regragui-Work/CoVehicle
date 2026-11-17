@@ -2,17 +2,15 @@ app:
   database:
     port: 5432
     name: ${DB_NAME:cv_db}
-    host: localhost
     url-prefix: jdbc:postgresql://${app.database.host}:${app.database.port}/
     auto-create: false
 
 spring:
-  application:
-    name: CoVehicle
+  profiles:
+    default: local
 
   datasource:
     url: "${app.database.url-prefix}${app.database.name}"
-    driver-class-name: org.postgresql.Driver
     username: "${DB_USERNAME:postgres}"
     password: "${DB_PASSWORD:}"
 
