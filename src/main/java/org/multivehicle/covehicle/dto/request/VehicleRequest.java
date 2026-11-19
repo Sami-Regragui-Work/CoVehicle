@@ -10,7 +10,6 @@ public record VehicleRequest(
         @NotBlank String model,
         String color,
         @NotBlank String licensePlate,
-        @NotNull @Min(1) @Max(8) Integer capacity,
-        @NotNull Long driverId
+        @NotNull @Min(1) @Max(8) Integer capacity
 ) {
 }
