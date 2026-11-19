@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "stops", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"trip_id", "city"}),
-        @UniqueConstraint(columnNames = {"trip_id", "stop_order"})
+        @UniqueConstraint(name = "uk_city_trip", columnNames = {"trip_id", "city"}),
+        @UniqueConstraint(name = "uk_stop-order_trip", columnNames = {"trip_id", "stop_order"})
 })
 @Builder @AllArgsConstructor
 @Getter @Setter @NoArgsConstructor
