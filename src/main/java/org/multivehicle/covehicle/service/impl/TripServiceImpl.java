@@ -5,10 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.multivehicle.covehicle.dto.request.StopRequest;
 import org.multivehicle.covehicle.dto.request.TripRequest;
 import org.multivehicle.covehicle.dto.response.TripResponse;
+import org.multivehicle.covehicle.dto.response.TripSearchResult;
 import org.multivehicle.covehicle.entity.Stop;
 import org.multivehicle.covehicle.entity.Trip;
 import org.multivehicle.covehicle.entity.Vehicle;
 import org.multivehicle.covehicle.entity.enums.ReservationStatus;
+import org.multivehicle.covehicle.entity.enums.TripStatus;
+import org.multivehicle.covehicle.exception.badrequest.InvalidSearchCriteriaException;
 import org.multivehicle.covehicle.exception.badrequest.InvalidStopSequenceException;
 import org.multivehicle.covehicle.exception.badrequest.SeatsExceedCapacityException;
 import org.multivehicle.covehicle.exception.forbidden.NotVehicleOwnerException;
@@ -20,10 +23,15 @@ import org.multivehicle.covehicle.repository.ReservationRepository;
 import org.multivehicle.covehicle.repository.TripRepository;
 import org.multivehicle.covehicle.repository.VehicleRepository;
 import org.multivehicle.covehicle.service.TripService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +79,7 @@ public class TripServiceImpl implements TripService {
         List<StopRequest> stopRequests = request.stops();
         for (int i = 0; i < stopRequests.size(); i++) {
             Stop stop = stopMapper.toEntity(stopRequests.get(i));
+            stop.setCity(stop.getCity().trim());
             stop.setStopOrder(i);
             trip.addStop(stop);
         }
@@ -88,6 +97,59 @@ public class TripServiceImpl implements TripService {
         long reservedSeats = reservationRepository.sumReservedSeats(id, ReservationStatus.CONFIRMED);
         int remainingSeats = trip.getSeatsOffered() - Math.toIntExact(reservedSeats);
         return tripMapper.toResponse(trip, remainingSeats);
+    }
+
+    @Override
+    public Page<TripSearchResult> search(String departureCity, String arrivalCity, LocalDate date,
+                                         int seats, BigDecimal maxPrice, int page, int size) {
+        if (seats < 1) {
+            throw new InvalidSearchCriteriaException("seats must be at least 1");
+        }
+        if (page < 0) {
+            throw new InvalidSearchCriteriaException("page must be 0 or greater");
+        }
+        if (size < 1) {
+            throw new InvalidSearchCriteriaException("size must be at least 1");
+        }
+        if (size > 50) {
+            throw new InvalidSearchCriteriaException("size must be at most 50");
+        }
+
+        String rawDeparture = departureCity == null ? "" : departureCity.trim();
+        if (rawDeparture.isBlank()) {
+            throw new InvalidSearchCriteriaException("departureCity must not be blank");
+        }
+        String rawArrival = arrivalCity == null ? "" : arrivalCity.trim();
+        if (rawArrival.isBlank()) {
+            throw new InvalidSearchCriteriaException("arrivalCity must not be blank");
+        }
+        String departure = rawDeparture.toLowerCase(Locale.ROOT);
+        String arrival = rawArrival.toLowerCase(Locale.ROOT);
+
+        LocalDateTime startDate = date.atStartOfDay();
+        LocalDateTime endDate = startDate.plusDays(1);
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (maxPrice == null) {
+            Page<TripSearchResult> result = tripRepository.search(departure, arrival, startDate, endDate, seats,
+                    TripStatus.PUBLISHED, ReservationStatus.CONFIRMED, pageable);
+            return withForcedCount(result, pageable,
+                    () -> tripRepository.countSearch(departure, arrival, startDate, endDate, seats,
+                            TripStatus.PUBLISHED, ReservationStatus.CONFIRMED));
+        }
+        Page<TripSearchResult> result = tripRepository.searchWithMaxPrice(departure, arrival, startDate, endDate,
+                seats, maxPrice, TripStatus.PUBLISHED, ReservationStatus.CONFIRMED, pageable);
+        return withForcedCount(result, pageable,
+                () -> tripRepository.countSearchWithMaxPrice(departure, arrival, startDate, endDate, seats, maxPrice,
+                        TripStatus.PUBLISHED, ReservationStatus.CONFIRMED));
+    }
+
+    private Page<TripSearchResult> withForcedCount(Page<TripSearchResult> page, Pageable pageable,
+                                                   java.util.function.LongSupplier countSupplier) {
+        if (page.getContent().size() >= pageable.getPageSize()) {
+            return page;
+        }
+        return new PageImpl<>(page.getContent(), pageable, countSupplier.getAsLong());
     }
 
     private void validateStops(List<StopRequest> stops) {
