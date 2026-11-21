@@ -1,0 +1,21 @@
+$kind: http-request
+description: "Rule: cannot update driver to use another user's email."
+url: "{{baseUrl}}/api/drivers/{{newDriverId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "TestUpdated",
+      "lastName": "Driver",
+      "email": "hamid@covehicle.local",
+      "phone": "0600000099",
+      "licenseNumber": "{{newDriverLicense}}"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 5000

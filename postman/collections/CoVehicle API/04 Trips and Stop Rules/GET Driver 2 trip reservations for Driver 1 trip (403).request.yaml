@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/2/trips/{{tripId}}/reservations"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 403', () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 15000

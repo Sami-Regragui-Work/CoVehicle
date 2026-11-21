@@ -1,0 +1,46 @@
+name: CoVehicle Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+  - key: hamidId
+    value: '1'
+  - key: youssefId
+    value: '2'
+  - key: fatimaId
+    value: '3'
+  - key: omarId
+    value: '4'
+  - key: saraId
+    value: '5'
+  - key: salmaId
+    value: '6'
+  - key: karimId
+    value: '7'
+  - key: imaneId
+    value: '8'
+  - key: mehdiId
+    value: '9'
+  - key: nadiaId
+    value: '10'
+  - key: daciaId
+    value: '1'
+  - key: clioId
+    value: '2'
+  - key: peugeotId
+    value: '3'
+  - key: yarisId
+    value: '4'
+  - key: i10Id
+    value: '5'
+  - key: seedTrip1Id
+    value: '1'
+  - key: seedTrip2Id
+    value: '2'
+  - key: seedTrip3Id
+    value: '3'
+  - key: seedTrip4Id
+    value: '4'
+  - key: seedTrip5Id
+    value: '5'
+  - key: nadiaSeedReservationId
+    value: '6'

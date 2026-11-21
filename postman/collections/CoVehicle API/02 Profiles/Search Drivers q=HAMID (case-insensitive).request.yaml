@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/search?q=HAMID"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  q: HAMID
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      pm.test('finds Hamid case-insensitively', () => pm.expect(pm.response.json().some(d => d.firstName.toLowerCase() === 'hamid')).to.be.true);
+    language: text/javascript
+order: 7000

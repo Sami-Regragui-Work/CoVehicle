@@ -1,0 +1,3 @@
+$kind: collection
+description: "Reservation rules: duplicates, capacity, ownership, trip state, and history."
+order: 7000

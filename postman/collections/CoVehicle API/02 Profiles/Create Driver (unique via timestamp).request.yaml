@@ -1,0 +1,26 @@
+$kind: http-request
+description: Creates a new driver with unique email/license via $timestamp. Saves values for PUT.
+url: "{{baseUrl}}/api/drivers"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "Test",
+      "lastName": "Driver",
+      "email": "driver_{{$timestamp}}@test.local",
+      "phone": "0600000099",
+      "licenseNumber": "TST-{{$timestamp}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.collectionVariables.set('newDriverId', body.id);
+      pm.collectionVariables.set('newDriverEmail', body.email);
+      pm.collectionVariables.set('newDriverLicense', body.licenseNumber);
+    language: text/javascript
+order: 1000

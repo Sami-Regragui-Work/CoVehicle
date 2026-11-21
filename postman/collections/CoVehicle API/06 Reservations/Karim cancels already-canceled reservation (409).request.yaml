@@ -1,0 +1,11 @@
+$kind: http-request
+description: "Rule: cannot cancel an already-canceled reservation."
+url: "{{baseUrl}}/api/passengers/7/reservations/{{karimReservationId}}"
+method: DELETE
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 12000

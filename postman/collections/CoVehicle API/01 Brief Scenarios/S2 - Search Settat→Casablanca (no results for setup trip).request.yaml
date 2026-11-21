@@ -1,0 +1,20 @@
+$kind: http-request
+description: "Rule: search only returns trips where pickup stop comes before dropoff stop."
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Casablanca&date={{day5}}"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Casablanca
+  date: "{{day5}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const tripId = pm.collectionVariables.get('tripId');
+      const found = body.content.find(t => String(t.tripId) === String(tripId));
+      pm.test('setup tripId NOT in results (Casablanca is before Settat)', () => pm.expect(found).to.be.undefined);
+    language: text/javascript
+order: 2000

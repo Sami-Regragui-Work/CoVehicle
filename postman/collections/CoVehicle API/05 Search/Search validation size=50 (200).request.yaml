@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=50"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  size: "50"
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 18000

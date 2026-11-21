@@ -1,0 +1,26 @@
+$kind: http-request
+description: "Rule: booking 2 seats (80 each) fills the trip → FULL."
+url: "{{baseUrl}}/api/passengers/7/reservations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tripId": "{{tripId}}",
+      "pickupStopId": "{{stopCasa}}",
+      "dropoffStopId": "{{stopMarrakech}}",
+      "numberOfSeats": 2
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('totalAmount 160.00', () => pm.expect(Number(body.totalAmount)).to.eql(160));
+      pm.test('remainingSeats 0', () => pm.expect(body.remainingSeats).to.eql(0));
+      pm.test('tripStatus FULL', () => pm.expect(body.tripStatus).to.eql('FULL'));
+      pm.collectionVariables.set('karimReservationId', body.id);
+    language: text/javascript
+order: 3000

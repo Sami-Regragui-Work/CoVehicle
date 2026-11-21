@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/search?q=hamid"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  q: hamid
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('finds Hamid', () => pm.expect(body.some(d => d.firstName.toLowerCase() === 'hamid')).to.be.true);
+    language: text/javascript
+order: 6000

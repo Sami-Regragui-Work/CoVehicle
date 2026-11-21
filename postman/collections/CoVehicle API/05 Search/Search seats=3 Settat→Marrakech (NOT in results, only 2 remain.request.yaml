@@ -1,0 +1,20 @@
+$kind: http-request
+name: Search seats=3 Settat→Marrakech (NOT in results, only 2 remaining)
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&seats=3"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  seats: "3"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const tripId = pm.collectionVariables.get('tripId');
+      const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));
+      pm.test('tripId NOT in results (only 2 remaining)', () => pm.expect(found).to.be.undefined);
+    language: text/javascript
+order: 4000

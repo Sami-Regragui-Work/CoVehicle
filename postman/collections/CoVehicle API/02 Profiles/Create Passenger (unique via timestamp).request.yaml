@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/passengers"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "Test",
+      "lastName": "Passenger",
+      "email": "passenger_{{$timestamp}}@test.local",
+      "phone": "0610000099"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.collectionVariables.set('newPassengerId', body.id);
+      pm.collectionVariables.set('newPassengerEmail', body.email);
+    language: text/javascript
+order: 15000

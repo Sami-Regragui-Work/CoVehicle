@@ -1,0 +1,15 @@
+$kind: http-request
+description: "Rule: cancelling a reservation restores seats and reverts FULL→PUBLISHED."
+url: "{{baseUrl}}/api/trips/{{tripId}}"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));
+      pm.test('remainingSeats 2', () => pm.expect(body.remainingSeats).to.eql(2));
+    language: text/javascript
+order: 6000

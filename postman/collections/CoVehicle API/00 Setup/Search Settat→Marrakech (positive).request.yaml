@@ -1,0 +1,22 @@
+$kind: http-request
+description: "Positive search: segment Settat→Marrakech costs 120-70=50."
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const tripId = pm.collectionVariables.get('tripId');
+      const found = body.content.find(t => String(t.tripId) === String(tripId));
+      pm.test('tripId present in results', () => pm.expect(found).to.not.be.undefined);
+      pm.test('segmentPrice 50', () => pm.expect(Number(found.segmentPrice)).to.eql(50));
+      pm.test('remainingSeats 3', () => pm.expect(Number(found.remainingSeats)).to.eql(3));
+    language: text/javascript
+order: 7000

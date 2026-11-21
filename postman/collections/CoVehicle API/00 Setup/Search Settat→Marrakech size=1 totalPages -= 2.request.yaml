@@ -1,0 +1,21 @@
+$kind: http-request
+name: Search Settat→Marrakech size=1 totalPages >= 2
+description: Verifies pagination with size=1 returns totalPages >= 2 since we have 2 trips.
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=1"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  size: "1"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('totalPages >= 2', () => pm.expect(body.totalPages).to.be.at.least(2));
+      pm.test('has tripId', () => pm.expect(body.content[0]).to.have.property('tripId'));
+    language: text/javascript
+order: 6000

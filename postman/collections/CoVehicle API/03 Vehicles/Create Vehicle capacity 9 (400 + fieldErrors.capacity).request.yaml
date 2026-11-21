@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/1/vehicles"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "brand": "Bus",
+      "model": "Big",
+      "color": "Yellow",
+      "licensePlate": "BIG-001",
+      "capacity": 9
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 400', () => pm.response.to.have.status(400));
+      pm.test('fieldErrors.capacity present', () => {
+          pm.expect(pm.response.json().fieldErrors).to.have.property('capacity');
+      });
+    language: text/javascript
+order: 7000

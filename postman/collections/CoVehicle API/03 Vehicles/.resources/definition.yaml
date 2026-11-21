@@ -1,0 +1,3 @@
+$kind: collection
+description: Vehicle CRUD under /api/drivers/{driverId}/vehicles with ownership and validation checks.
+order: 4000

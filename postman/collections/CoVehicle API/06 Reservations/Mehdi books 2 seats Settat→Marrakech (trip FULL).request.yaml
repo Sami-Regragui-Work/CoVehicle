@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/passengers/9/reservations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tripId": "{{tripId}}",
+      "pickupStopId": "{{stopSettat}}",
+      "dropoffStopId": "{{stopMarrakech}}",
+      "numberOfSeats": 2
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('tripStatus FULL', () => pm.expect(body.tripStatus).to.eql('FULL'));
+      pm.collectionVariables.set('mehdiReservationId', body.id);
+    language: text/javascript
+order: 16000

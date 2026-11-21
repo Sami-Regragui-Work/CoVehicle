@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/1/vehicles"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "brand": "Ford",
+      "model": "Focus",
+      "color": "Silver",
+      "licensePlate": "TST-{{$timestamp}}",
+      "capacity": 4
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.collectionVariables.set('newVehicleId', body.id);
+      pm.collectionVariables.set('newVehiclePlate', body.licensePlate);
+    language: text/javascript
+order: 1000

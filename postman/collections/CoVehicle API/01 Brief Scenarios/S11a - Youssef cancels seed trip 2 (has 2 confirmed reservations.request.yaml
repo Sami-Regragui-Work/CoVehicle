@@ -1,0 +1,12 @@
+$kind: http-request
+name: S11a - Youssef cancels seed trip 2 (has 2 confirmed reservations)
+description: "Rule: driver can cancel a FULL trip; all confirmed reservations become CANCELED. NOT rerunnable without reseeding."
+url: "{{baseUrl}}/api/drivers/2/trips/2/cancel"
+method: POST
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 204', () => pm.response.to.have.status(204));
+    language: text/javascript
+order: 12000

@@ -1,0 +1,40 @@
+$kind: http-request
+description: "Rule: driver cannot use a vehicle that belongs to another driver."
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": 2,
+      "seatsOffered": 3,
+      "stops": [
+        {
+          "city": "Rabat",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Casablanca",
+          "arrivalTime": "{{day5}}T18:15:00",
+          "priceFromStart": 40
+        },
+        {
+          "city": "Settat",
+          "arrivalTime": "{{day5}}T19:15:00",
+          "priceFromStart": 70
+        },
+        {
+          "city": "Marrakech",
+          "arrivalTime": "{{day5}}T21:30:00",
+          "priceFromStart": 120
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 403', () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 9000

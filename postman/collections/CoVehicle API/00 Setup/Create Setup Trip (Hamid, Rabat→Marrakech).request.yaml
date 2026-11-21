@@ -1,0 +1,57 @@
+$kind: http-request
+description: Creates the main test trip. Saves tripId and stop ids as collection variables.
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": 1,
+      "seatsOffered": 3,
+      "stops": [
+        {
+          "city": "Rabat",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Casablanca",
+          "arrivalTime": "{{day5}}T18:15:00",
+          "priceFromStart": 40
+        },
+        {
+          "city": "Settat",
+          "arrivalTime": "{{day5}}T19:15:00",
+          "priceFromStart": 70
+        },
+        {
+          "city": "Marrakech",
+          "arrivalTime": "{{day5}}T21:30:00",
+          "priceFromStart": 120
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('Status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));
+      pm.test('remainingSeats 3', () => pm.expect(body.remainingSeats).to.eql(3));
+      pm.test('4 stops', () => pm.expect(body.stops).to.have.lengthOf(4));
+      pm.test('stopOrder 0..3', () => {
+          const orders = body.stops.map(s => s.stopOrder).sort((a,b)=>a-b);
+          pm.expect(orders).to.eql([0,1,2,3]);
+      });
+      pm.test('departureCity Rabat', () => pm.expect(body.departureCity).to.eql('Rabat'));
+      pm.test('arrivalCity Marrakech', () => pm.expect(body.arrivalCity).to.eql('Marrakech'));
+      pm.collectionVariables.set('tripId', body.id);
+      const byCity = c => body.stops.find(s => s.city === c).id;
+      pm.collectionVariables.set('stopRabat',     byCity('Rabat'));
+      pm.collectionVariables.set('stopCasa',      byCity('Casablanca'));
+      pm.collectionVariables.set('stopSettat',    byCity('Settat'));
+      pm.collectionVariables.set('stopMarrakech', byCity('Marrakech'));
+    language: text/javascript
+order: 2000

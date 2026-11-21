@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const trip = body.content[0];
+      if (trip) {
+          pm.test('has tripId', () => pm.expect(trip).to.have.property('tripId'));
+          pm.test('has driverName', () => pm.expect(trip).to.have.property('driverName'));
+          pm.test('has vehicle.id', () => pm.expect(trip.vehicle).to.have.property('id'));
+          pm.test('has pickupCity', () => pm.expect(trip).to.have.property('pickupCity'));
+          pm.test('has pickupTime', () => pm.expect(trip).to.have.property('pickupTime'));
+          pm.test('has dropoffCity', () => pm.expect(trip).to.have.property('dropoffCity'));
+          pm.test('has dropoffTime', () => pm.expect(trip).to.have.property('dropoffTime'));
+          pm.test('has segmentPrice', () => pm.expect(trip).to.have.property('segmentPrice'));
+          pm.test('has remainingSeats', () => pm.expect(trip).to.have.property('remainingSeats'));
+          pm.test('has departureDate', () => pm.expect(trip).to.have.property('departureDate'));
+      }
+    language: text/javascript
+order: 20000

@@ -1,0 +1,5665 @@
+{
+  "info": {
+    "_postman_id": "wifewxdksahj0b5m",
+    "name": "CoVehicle API",
+    "description": "Complete test collection for the CoVehicle REST API (Spring Boot).\n\n## Prerequisites\nThis collection assumes a freshly seeded database. Requests S10 and S11 (folder 01) depend on seed data and cannot be rerun without reseeding.\n\n## Run order\nFolders must be run in order: 00 → 01 → 02 → 03 → 04 → 05 → 06.\nFolder 00 creates the main test trip and saves its id and stop ids as collection variables.\nAll subsequent folders depend on those variables.\n\n## Seed-dependent requests\n- **S10** (folder 01): depends on seed trip 5 departing in ~2 hours. Cannot be rerun without reseeding.\n- **S11** (folder 01): Youssef cancels seed trip 2. A second run returns 409 because the trip is already CANCELED. Reseed the database to rerun.\n\n## Reseeding\nDrop and recreate the database, then restart the app with the `local` or `docker` profile.\nThe seeder runs automatically when the drivers table is empty.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "day5",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tripId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stopRabat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stopCasa",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stopSettat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stopMarrakech",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "salmaReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "karimReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newDriverId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newDriverEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newDriverLicense",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newPassengerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newPassengerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newVehicleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newVehiclePlate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deletableVehicleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mehdiReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "day15",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secondVehicleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secondTripId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Compute day5 = today + 5 days as yyyy-MM-dd",
+          "const d = new Date();",
+          "d.setDate(d.getDate() + 5);",
+          "const pad = n => String(n).padStart(2,'0');",
+          "const day5 = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());",
+          "pm.collectionVariables.set('day5', day5);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const status = pm.response.code;",
+          "if (status >= 400) {",
+          "    let body;",
+          "    try { body = pm.response.json(); } catch(e) { return; }",
+          "    pm.test('Error response is ProblemDetail', function () {",
+          "        pm.expect(body).to.have.property('timestamp');",
+          "        pm.expect(body.status).to.eql(status);",
+          "        pm.expect(body.type).to.match(/^urn:covehicle:error:/);",
+          "        pm.expect(body).to.have.property('detail');",
+          "        pm.expect(body.instance).to.eql(pm.request.url.getPath());",
+          "    });",
+          "    if (status === 400 && body.fieldErrors) {",
+          "        pm.test('Validation error has fieldErrors', function () {",
+          "            pm.expect(body.fieldErrors).to.be.an('object');",
+          "        });",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Setup",
+      "item": [
+        {
+          "name": "Create second vehicle for Driver 1 (for second trip)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "description": "Creates a second vehicle so we can publish a second trip on the same day without double-booking.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Renault\",\n  \"model\": \"Megane\",\n  \"color\": \"Blue\",\n  \"licensePlate\": \"SEC-{{$timestamp}}\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('secondVehicleId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "78affvr6suyuv3q9"
+        },
+        {
+          "name": "Create Setup Trip (Hamid, Rabat→Marrakech)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "description": "Creates the main test trip. Saves tripId and stop ids as collection variables.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:15:00\",\n      \"priceFromStart\": 40\n    },\n    {\n      \"city\": \"Settat\",\n      \"arrivalTime\": \"{{day5}}T19:15:00\",\n      \"priceFromStart\": 70\n    },\n    {\n      \"city\": \"Marrakech\",\n      \"arrivalTime\": \"{{day5}}T21:30:00\",\n      \"priceFromStart\": 120\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));",
+                  "pm.test('remainingSeats 3', () => pm.expect(body.remainingSeats).to.eql(3));",
+                  "pm.test('4 stops', () => pm.expect(body.stops).to.have.lengthOf(4));",
+                  "pm.test('stopOrder 0..3', () => {",
+                  "    const orders = body.stops.map(s => s.stopOrder).sort((a,b)=>a-b);",
+                  "    pm.expect(orders).to.eql([0,1,2,3]);",
+                  "});",
+                  "pm.test('departureCity Rabat', () => pm.expect(body.departureCity).to.eql('Rabat'));",
+                  "pm.test('arrivalCity Marrakech', () => pm.expect(body.arrivalCity).to.eql('Marrakech'));",
+                  "pm.collectionVariables.set('tripId', body.id);",
+                  "const byCity = c => body.stops.find(s => s.city === c).id;",
+                  "pm.collectionVariables.set('stopRabat',     byCity('Rabat'));",
+                  "pm.collectionVariables.set('stopCasa',      byCity('Casablanca'));",
+                  "pm.collectionVariables.set('stopSettat',    byCity('Settat'));",
+                  "pm.collectionVariables.set('stopMarrakech', byCity('Marrakech'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mjnhosyhhi4lot2q"
+        },
+        {
+          "name": "GET Setup Trip",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}"
+              ]
+            },
+            "description": "Verifies the created trip is retrievable with correct data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('remainingSeats 3', () => pm.expect(body.remainingSeats).to.eql(3));",
+                  "pm.test('stops in order', () => {",
+                  "    for (let i = 0; i < body.stops.length - 1; i++) {",
+                  "        pm.expect(body.stops[i].stopOrder).to.be.lessThan(body.stops[i+1].stopOrder);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "wzerppcvrvgb8lr2"
+        },
+        {
+          "name": "Create second trip (Settat→Marrakech, same day)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "description": "Creates a second published trip on the same day for sorting tests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{secondVehicleId}}\",\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Settat\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Marrakech\",\n      \"arrivalTime\": \"{{day5}}T20:00:00\",\n      \"priceFromStart\": 45\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));",
+                  "pm.collectionVariables.set('secondTripId', body.id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ke5thr52ikcj3wgc"
+        },
+        {
+          "name": "Search Settat→Marrakech sorted by departureDate asc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            },
+            "description": "Verifies results are sorted by departureDate ascending and both trips are present."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const content = body.content;",
+                  "pm.test('at least 2 results', () => pm.expect(content.length).to.be.at.least(2));",
+                  "pm.test('sorted by departureDate ascending', () => {",
+                  "    for (let i = 1; i < content.length; i++) {",
+                  "        pm.expect(new Date(content[i].departureDate).getTime()).to.be.at.least(new Date(content[i-1].departureDate).getTime());",
+                  "    }",
+                  "});",
+                  "pm.test('setup tripId present', () => {",
+                  "    const tripId = pm.collectionVariables.get('tripId');",
+                  "    pm.expect(content.some(t => String(t.tripId) === String(tripId))).to.be.true;",
+                  "});",
+                  "pm.test('second tripId present', () => {",
+                  "    const secondTripId = pm.collectionVariables.get('secondTripId');",
+                  "    pm.expect(content.some(t => String(t.tripId) === String(secondTripId))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "vs18uxm2tqiixzpn"
+        },
+        {
+          "name": "Search Settat→Marrakech size=1 totalPages >= 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Verifies pagination with size=1 returns totalPages >= 2 since we have 2 trips."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('totalPages >= 2', () => pm.expect(body.totalPages).to.be.at.least(2));",
+                  "pm.test('has tripId', () => pm.expect(body.content[0]).to.have.property('tripId'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "syuzku3yuqh54cma"
+        },
+        {
+          "name": "Search Settat→Marrakech (positive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            },
+            "description": "Positive search: segment Settat→Marrakech costs 120-70=50."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = body.content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('tripId present in results', () => pm.expect(found).to.not.be.undefined);",
+                  "pm.test('segmentPrice 50', () => pm.expect(Number(found.segmentPrice)).to.eql(50));",
+                  "pm.test('remainingSeats 3', () => pm.expect(Number(found.remainingSeats)).to.eql(3));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "zs9bv7r4t2jkjn3m"
+        }
+      ],
+      "description": "Creates the main trip used by all subsequent scenarios. Must run first.",
+      "_postman_id": "dsx3mjdpapbn7oxm"
+    },
+    {
+      "name": "01 Brief Scenarios",
+      "item": [
+        {
+          "name": "S1 - Salma books 1 seat Settat to Marrakech",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/6/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "6",
+                "reservations"
+              ]
+            },
+            "description": "Rule: passenger can book available seats on a PUBLISHED trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('totalAmount 50.00', () => pm.expect(Number(body.totalAmount)).to.eql(50));",
+                  "pm.test('remainingSeats 2', () => pm.expect(body.remainingSeats).to.eql(2));",
+                  "pm.test('status CONFIRMED', () => pm.expect(body.status).to.eql('CONFIRMED'));",
+                  "pm.collectionVariables.set('salmaReservationId', body.id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ckr9p9fb2v7ogy07"
+        },
+        {
+          "name": "S2 - Search Settat→Casablanca (no results for setup trip)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Casablanca&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Casablanca"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            },
+            "description": "Rule: search only returns trips where pickup stop comes before dropoff stop."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = body.content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('setup tripId NOT in results (Casablanca is before Settat)', () => pm.expect(found).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "kmio4vbnut56jgin"
+        },
+        {
+          "name": "S3 - Karim books 2 seats Casablanca to Marrakech",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/7/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "7",
+                "reservations"
+              ]
+            },
+            "description": "Rule: booking 2 seats (80 each) fills the trip → FULL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopCasa}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('totalAmount 160.00', () => pm.expect(Number(body.totalAmount)).to.eql(160));",
+                  "pm.test('remainingSeats 0', () => pm.expect(body.remainingSeats).to.eql(0));",
+                  "pm.test('tripStatus FULL', () => pm.expect(body.tripStatus).to.eql('FULL'));",
+                  "pm.collectionVariables.set('karimReservationId', body.id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "p7rp3we0vy50p7or"
+        },
+        {
+          "name": "S4 - Imane tries to book on FULL trip (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/8/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "8",
+                "reservations"
+              ]
+            },
+            "description": "Rule: cannot book on a FULL trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "paaqzjejrxysrmkp"
+        },
+        {
+          "name": "S5a - Karim cancels his reservation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/7/reservations/{{karimReservationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "7",
+                "reservations",
+                "{{karimReservationId}}"
+              ]
+            },
+            "description": "Rule: passenger can cancel their own reservation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "47telh7r9w7i03b9"
+        },
+        {
+          "name": "S5b - GET trip after Karim cancels (PUBLISHED, 2 seats)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}"
+              ]
+            },
+            "description": "Rule: cancelling a reservation restores seats and reverts FULL→PUBLISHED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));",
+                  "pm.test('remainingSeats 2', () => pm.expect(body.remainingSeats).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "qb7nccezx0u0yycp"
+        },
+        {
+          "name": "S6 - Imane books reversed stops (pickup after dropoff → 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/8/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "8",
+                "reservations"
+              ]
+            },
+            "description": "Rule: pickup stop must come before dropoff stop in trip order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopMarrakech}}\",\n  \"dropoffStopId\": \"{{stopSettat}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "wr7df6mlv20b7636"
+        },
+        {
+          "name": "S7 - Create trip seatsOffered > vehicle capacity (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "description": "Rule: seatsOffered cannot exceed vehicle capacity (Dacia Logan capacity=4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 5,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:15:00\",\n      \"priceFromStart\": 40\n    },\n    {\n      \"city\": \"Settat\",\n      \"arrivalTime\": \"{{day5}}T19:15:00\",\n      \"priceFromStart\": 70\n    },\n    {\n      \"city\": \"Marrakech\",\n      \"arrivalTime\": \"{{day5}}T21:30:00\",\n      \"priceFromStart\": 120\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('detail mentions 4 places au maximum', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.detail).to.include('4 places au maximum');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mqjk062oxq5bgvlz"
+        },
+        {
+          "name": "S8 - Hamid creates trip with Youssef's vehicle (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "description": "Rule: driver cannot use a vehicle that belongs to another driver.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 2,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:15:00\",\n      \"priceFromStart\": 40\n    },\n    {\n      \"city\": \"Settat\",\n      \"arrivalTime\": \"{{day5}}T19:15:00\",\n      \"priceFromStart\": 70\n    },\n    {\n      \"city\": \"Marrakech\",\n      \"arrivalTime\": \"{{day5}}T21:30:00\",\n      \"priceFromStart\": 120\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "6snewspa6jxy2mgr"
+        },
+        {
+          "name": "S9 - Complete trip departing in 5 days (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips/{{tripId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips",
+                "{{tripId}}",
+                "complete"
+              ]
+            },
+            "description": "Rule: cannot complete a trip that has not yet departed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "531utfoly4ppu992"
+        },
+        {
+          "name": "S10 - Nadia cancels reservation < 24h before departure (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/10/reservations/6",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "10",
+                "reservations",
+                "6"
+              ]
+            },
+            "description": "Rule: cannot cancel a reservation less than 24 hours before departure. Depends on seed (trip 5 departs in ~2h)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('detail mentions 24 hours rule', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.detail.toLowerCase()).to.satisfy(d =>",
+                  "        d.includes('24') || d.includes('heure') || d.includes('hour'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ti8v4d2gror3k982"
+        },
+        {
+          "name": "S11a - Youssef cancels seed trip 2 (has 2 confirmed reservations)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/trips/2/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "trips",
+                "2",
+                "cancel"
+              ]
+            },
+            "description": "Rule: driver can cancel a FULL trip; all confirmed reservations become CANCELED. NOT rerunnable without reseeding."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "1uwrtnb8qa4mh0so"
+        },
+        {
+          "name": "S11b - Salma's reservation on trip 2 is now CANCELED",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/6/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "6",
+                "reservations"
+              ]
+            },
+            "description": "Verifies cascade cancellation of passenger reservations when driver cancels trip."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const r = body.find(r => r.tripId === 2);",
+                  "pm.test('Salma reservation on trip 2 is CANCELED', () => pm.expect(r.status).to.eql('CANCELED'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "lmhyznkq2kac4xp2"
+        },
+        {
+          "name": "S11c - Trip 2 status is CANCELED",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "2"
+              ]
+            },
+            "description": "Verifies trip status after driver cancellation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trip 2 CANCELED', () => pm.expect(pm.response.json().status).to.eql('CANCELED'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pgodkyidrk6ez241"
+        }
+      ],
+      "description": "Exactly the brief's scenario table in order. S10 and S11 depend on seed data. To rerun S11 the database must be reseeded.",
+      "_postman_id": "gyp4oow8fs6d2ue5"
+    },
+    {
+      "name": "02 Profiles",
+      "item": [
+        {
+          "name": "Create Driver (unique via timestamp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "description": "Creates a new driver with unique email/license via $timestamp. Saves values for PUT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"Driver\",\n  \"email\": \"driver_{{$timestamp}}@test.local\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"TST-{{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('newDriverId', body.id);",
+                  "pm.collectionVariables.set('newDriverEmail', body.email);",
+                  "pm.collectionVariables.set('newDriverLicense', body.licenseNumber);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "3osg48n5r9jia5dt"
+        },
+        {
+          "name": "GET All Drivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "emvhorzfo5dfzmkv"
+        },
+        {
+          "name": "GET Driver by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/{{newDriverId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "{{newDriverId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('id matches', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('newDriverId'))));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "xswn873e2otyzzw9"
+        },
+        {
+          "name": "PUT Driver (update, keep own email/license)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/{{newDriverId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "{{newDriverId}}"
+              ]
+            },
+            "description": "Self-excluding uniqueness check: updating with own email/license must succeed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"TestUpdated\",\n  \"lastName\": \"Driver\",\n  \"email\": \"{{newDriverEmail}}\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"{{newDriverLicense}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('firstName updated', () => pm.expect(pm.response.json().firstName).to.eql('TestUpdated'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "2lbt0b1reiki4up3"
+        },
+        {
+          "name": "PUT Driver with another user email (409)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/{{newDriverId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "{{newDriverId}}"
+              ]
+            },
+            "description": "Rule: cannot update driver to use another user's email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"TestUpdated\",\n  \"lastName\": \"Driver\",\n  \"email\": \"hamid@covehicle.local\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"{{newDriverLicense}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "16pdx5w9af00dlhg"
+        },
+        {
+          "name": "Search Drivers q=hamid",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/search?q=hamid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "hamid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('finds Hamid', () => pm.expect(body.some(d => d.firstName.toLowerCase() === 'hamid')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "x3uhosi0dlci1lay"
+        },
+        {
+          "name": "Search Drivers q=HAMID (case-insensitive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/search?q=HAMID",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "HAMID"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('finds Hamid case-insensitively', () => pm.expect(pm.response.json().some(d => d.firstName.toLowerCase() === 'hamid')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "852uqoxlrcemutpd"
+        },
+        {
+          "name": "Create Driver duplicate email (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "description": "Rule: email must be unique across all users.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Dup\",\n  \"lastName\": \"Driver\",\n  \"email\": \"hamid@covehicle.local\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"DUP-999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ejtczyc9fvzq2bpt"
+        },
+        {
+          "name": "Create Driver duplicate license (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "description": "Rule: license number must be unique.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Dup\",\n  \"lastName\": \"Driver\",\n  \"email\": \"unique_dup@test.local\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"HAM-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "v420dj23rqp9pnks"
+        },
+        {
+          "name": "Create Driver blank firstName (400 + fieldErrors)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"\",\n  \"lastName\": \"Driver\",\n  \"email\": \"blank_fn@test.local\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"BLK-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('fieldErrors.firstName present', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.fieldErrors).to.have.property('firstName');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ratoppy2eb7kj6pe"
+        },
+        {
+          "name": "Create Driver invalid email format (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Bad\",\n  \"lastName\": \"Email\",\n  \"email\": \"not-an-email\",\n  \"phone\": \"0600000099\",\n  \"licenseNumber\": \"BAD-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mda1cd2btkb4rgus"
+        },
+        {
+          "name": "Create Driver malformed JSON body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "description": "Sends malformed JSON to trigger parse error."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.body = { mode: 'raw', raw: '{bad' };"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "3n1nf3way3g7fz8c"
+        },
+        {
+          "name": "Create Driver missing body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers"
+              ]
+            },
+            "description": "Sends POST with no body to trigger missing body error."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "delete pm.request.body;"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "4p6l9aqairotcawl"
+        },
+        {
+          "name": "GET Driver not found (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "547hd1dmcwsksql8"
+        },
+        {
+          "name": "Create Passenger (unique via timestamp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"Passenger\",\n  \"email\": \"passenger_{{$timestamp}}@test.local\",\n  \"phone\": \"0610000099\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('newPassengerId', body.id);",
+                  "pm.collectionVariables.set('newPassengerEmail', body.email);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "dwkuqf1djj6gsqbh"
+        },
+        {
+          "name": "GET All Passengers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "brelumn6ir4sbzju"
+        },
+        {
+          "name": "GET Passenger by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/{{newPassengerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "{{newPassengerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "cafw13dpc341islt"
+        },
+        {
+          "name": "PUT Passenger (update own email)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/{{newPassengerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "{{newPassengerId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"TestUpdated\",\n  \"lastName\": \"Passenger\",\n  \"email\": \"{{newPassengerEmail}}\",\n  \"phone\": \"0610000099\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "j9qrruxvfthws9za"
+        },
+        {
+          "name": "PUT Passenger with another user email (409)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/{{newPassengerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "{{newPassengerId}}"
+              ]
+            },
+            "description": "Rule: cannot update passenger to use another user's email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"TestUpdated\",\n  \"lastName\": \"Passenger\",\n  \"email\": \"hamid@covehicle.local\",\n  \"phone\": \"0610000099\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mpb4r3ptsfbimxlm"
+        },
+        {
+          "name": "GET Passenger by email (Salma)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/by-email?email=salma@covehicle.local",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "by-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "salma@covehicle.local"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('email matches', () => pm.expect(pm.response.json().email).to.eql('salma@covehicle.local'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "i5d9fhkibr3cgscc"
+        },
+        {
+          "name": "GET Passenger by unknown email (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/by-email?email=nobody@test.local",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "by-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "nobody@test.local"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "vz3d0wbkiqcuyvzb"
+        },
+        {
+          "name": "Create Passenger duplicate email (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Dup\",\n  \"lastName\": \"Pass\",\n  \"email\": \"salma@covehicle.local\",\n  \"phone\": \"0610000099\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "lyo5caqykb15oeiy"
+        },
+        {
+          "name": "Create Passenger with Driver email (cross-type uniqueness, 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers"
+              ]
+            },
+            "description": "Rule: email is unique across both drivers and passengers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Cross\",\n  \"lastName\": \"Type\",\n  \"email\": \"hamid@covehicle.local\",\n  \"phone\": \"0610000099\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "vjpdod0nmx3ftw1b"
+        }
+      ],
+      "description": "Driver and passenger CRUD, search, and validation scenarios.",
+      "_postman_id": "3d3fvim4lizeg6o6"
+    },
+    {
+      "name": "03 Vehicles",
+      "item": [
+        {
+          "name": "Create Vehicle for Driver 1 (unique plate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Ford\",\n  \"model\": \"Focus\",\n  \"color\": \"Silver\",\n  \"licensePlate\": \"TST-{{$timestamp}}\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('newVehicleId', body.id);",
+                  "pm.collectionVariables.set('newVehiclePlate', body.licensePlate);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "l97iy4mi6e1ihijo"
+        },
+        {
+          "name": "GET Vehicles for Driver 1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "0g4gba4hnk37l0iy"
+        },
+        {
+          "name": "GET Vehicle by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/{{newVehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "{{newVehicleId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "s9u2vup4tm53r8mn"
+        },
+        {
+          "name": "PUT Vehicle (update, keep own plate)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/{{newVehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "{{newVehicleId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Ford\",\n  \"model\": \"Focus\",\n  \"color\": \"Black\",\n  \"licensePlate\": \"{{newVehiclePlate}}\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "t62m356r0kyv9qml"
+        },
+        {
+          "name": "PUT Vehicle with another plate (409)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/{{newVehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "{{newVehicleId}}"
+              ]
+            },
+            "description": "Rule: cannot update vehicle to use another vehicle's plate.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Ford\",\n  \"model\": \"Focus\",\n  \"color\": \"Black\",\n  \"licensePlate\": \"HAM-1234\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "t63ryyxt6nvwtrw6"
+        },
+        {
+          "name": "Create Vehicle duplicate plate (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Dacia\",\n  \"model\": \"Logan\",\n  \"color\": \"Grey\",\n  \"licensePlate\": \"HAM-1234\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ho4bcvioze83pbkq"
+        },
+        {
+          "name": "Create Vehicle capacity 9 (400 + fieldErrors.capacity)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Bus\",\n  \"model\": \"Big\",\n  \"color\": \"Yellow\",\n  \"licensePlate\": \"BIG-001\",\n  \"capacity\": 9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('fieldErrors.capacity present', () => {",
+                  "    pm.expect(pm.response.json().fieldErrors).to.have.property('capacity');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "qfdz4ayue7pk0cyr"
+        },
+        {
+          "name": "Create Vehicle missing capacity (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Ford\",\n  \"model\": \"Ka\",\n  \"color\": \"Red\",\n  \"licensePlate\": \"KA-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "afeugtkot891oize"
+        },
+        {
+          "name": "Create Vehicle unknown driver (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/99999/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "99999",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Ford\",\n  \"model\": \"Ka\",\n  \"color\": \"Red\",\n  \"licensePlate\": \"KA-002\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ns1kc67kxojgpn82"
+        },
+        {
+          "name": "GET Vehicle unknown vehicle (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "4fwnlyzolnse4eb2"
+        },
+        {
+          "name": "Driver 2 GET Driver 1's vehicle (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/vehicles/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "vehicles",
+                "1"
+              ]
+            },
+            "description": "Rule: driver can only access their own vehicles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mw5xqhu56bi15rr3"
+        },
+        {
+          "name": "Driver 2 PUT Driver 1's vehicle (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/vehicles/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "vehicles",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Dacia\",\n  \"model\": \"Logan\",\n  \"color\": \"Grey\",\n  \"licensePlate\": \"HAM-1234\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pf4zj2xk6cpwv8k7"
+        },
+        {
+          "name": "Create fresh vehicle for Driver 1 (to delete)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Kia\",\n  \"model\": \"Picanto\",\n  \"color\": \"White\",\n  \"licensePlate\": \"DEL-{{$timestamp}}\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('deletableVehicleId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "honazez7hpf3rp83"
+        },
+        {
+          "name": "DELETE fresh vehicle (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/{{deletableVehicleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "{{deletableVehicleId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "4ko5xhhmhmxnq6u1"
+        },
+        {
+          "name": "DELETE vehicle 1 that has trips (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/vehicles/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "vehicles",
+                "1"
+              ]
+            },
+            "description": "Rule: cannot delete a vehicle that has associated trips."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "yfgrp06c4rznj8yk"
+        },
+        {
+          "name": "Driver 2 DELETE Driver 1's vehicle (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/vehicles/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "vehicles",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ktx6tzl5pj8jobmx"
+        }
+      ],
+      "description": "Vehicle CRUD under /api/drivers/{driverId}/vehicles with ownership and validation checks.",
+      "_postman_id": "rqh4vni14nu36zid"
+    },
+    {
+      "name": "04 Trips and Stop Rules",
+      "item": [
+        {
+          "name": "Create trip one stop only (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "bhpluiayki2v24sh"
+        },
+        {
+          "name": "Create trip first stop in the past (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"2000-01-01T10:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"2000-01-01T11:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "qsvzi5ajjurpxcpq"
+        },
+        {
+          "name": "Create trip stop times not strictly increasing (equal times, 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ktf9zhnihxm7lhmk"
+        },
+        {
+          "name": "Create trip duplicate city case-insensitive (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \" rabat \",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "tplrprveco55r0nn"
+        },
+        {
+          "name": "Create trip first price not 0 (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 10\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "cu3pfldeoy6o1gho"
+        },
+        {
+          "name": "Create trip prices not strictly increasing (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    },\n    {\n      \"city\": \"Settat\",\n      \"arrivalTime\": \"{{day5}}T19:00:00\",\n      \"priceFromStart\": 30\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "4lam6a3usfdxsaji"
+        },
+        {
+          "name": "Create trip blank city (400 + fieldErrors)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "0pv6zw4eiewl8xqj"
+        },
+        {
+          "name": "Create trip empty stops list (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "siqav0jw5ny66z2w"
+        },
+        {
+          "name": "Create trip missing seatsOffered (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "wnrb1q7eioqg0bex"
+        },
+        {
+          "name": "Create trip unknown driver (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/99999/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "99999",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 1,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "q0w51skiu9b79dnt"
+        },
+        {
+          "name": "Create trip unknown vehicle (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": 99999,\n  \"seatsOffered\": 3,\n  \"stops\": [\n    {\n      \"city\": \"Rabat\",\n      \"arrivalTime\": \"{{day5}}T17:00:00\",\n      \"priceFromStart\": 0\n    },\n    {\n      \"city\": \"Casablanca\",\n      \"arrivalTime\": \"{{day5}}T18:00:00\",\n      \"priceFromStart\": 40\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "0dmxm9jd79xs28yf"
+        },
+        {
+          "name": "GET Trip not found (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "gr1gc3g528t4s2wo"
+        },
+        {
+          "name": "GET Driver 1 trips (contains setup tripId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "pm.test('contains setup tripId', () => {",
+                  "    pm.expect(pm.response.json().some(t => String(t.id) === String(tripId))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "1qw7fbxtb4e5q4zm"
+        },
+        {
+          "name": "GET Driver 1 trip reservations (Salma CONFIRMED, Karim CANCELED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/1/trips/{{tripId}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "1",
+                "trips",
+                "{{tripId}}",
+                "reservations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('contains Salma CONFIRMED', () => {",
+                  "    pm.expect(body.some(r => r.passengerId === 6 && r.status === 'CONFIRMED')).to.be.true;",
+                  "});",
+                  "pm.test('contains Karim CANCELED', () => {",
+                  "    pm.expect(body.some(r => r.passengerId === 7 && r.status === 'CANCELED')).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "hix9w18vwp0qutse"
+        },
+        {
+          "name": "GET Driver 2 trip reservations for Driver 1 trip (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/trips/{{tripId}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "trips",
+                "{{tripId}}",
+                "reservations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "1476h4g2hdbb5l1l"
+        },
+        {
+          "name": "Driver 2 complete Driver 1 trip (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/trips/{{tripId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "trips",
+                "{{tripId}}",
+                "complete"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "fk9b5s7zg904e9jg"
+        },
+        {
+          "name": "Driver 2 cancel Driver 1 trip (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/2/trips/{{tripId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "2",
+                "trips",
+                "{{tripId}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "3bohciy5fyg8wpdl"
+        },
+        {
+          "name": "Complete seed trip 3 (already COMPLETED → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/3/trips/3/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "3",
+                "trips",
+                "3",
+                "complete"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "iqilxsf8jlfd8pcr"
+        },
+        {
+          "name": "Cancel seed trip 3 (already COMPLETED → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/3/trips/3/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "3",
+                "trips",
+                "3",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "atmrl72dm53pmah1"
+        },
+        {
+          "name": "Cancel seed trip 4 (already CANCELED → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/drivers/4/trips/4/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "drivers",
+                "4",
+                "trips",
+                "4",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "k3qzllns2u4pak0p"
+        }
+      ],
+      "description": "Trip creation validation rules and state-transition guards.",
+      "_postman_id": "0aqitactm5bi68ul"
+    },
+    {
+      "name": "05 Search",
+      "item": [
+        {
+          "name": "Search maxPrice=60 Settat→Marrakech (contains tripId, segment 50)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&maxPrice=60",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "60"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('contains tripId (segment 50 <= 60)', () => pm.expect(found).to.not.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "tzrszpgu8nn88dja"
+        },
+        {
+          "name": "Search maxPrice=60 Rabat→Marrakech (does NOT contain tripId, segment 120)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Rabat&arrivalCity=Marrakech&date={{day5}}&maxPrice=60",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Rabat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "60"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('tripId NOT in results (segment 120 > 60)', () => pm.expect(found).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "dh0l3s67gm0symyz"
+        },
+        {
+          "name": "Search maxPrice=120 Rabat→Marrakech (contains tripId, segmentPrice 120)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Rabat&arrivalCity=Marrakech&date={{day5}}&maxPrice=120",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Rabat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "120"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('contains tripId with segmentPrice 120', () => {",
+                  "    pm.expect(found).to.not.be.undefined;",
+                  "    pm.expect(Number(found.segmentPrice)).to.eql(120);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "aldsk071puahcaf7"
+        },
+        {
+          "name": "Search seats=3 Settat→Marrakech (NOT in results, only 2 remaining)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&seats=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "seats",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('tripId NOT in results (only 2 remaining)', () => pm.expect(found).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "0ymdlpculrkeso1o"
+        },
+        {
+          "name": "Search seats=2 Settat→Marrakech (contains tripId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&seats=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "seats",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('contains tripId (2 seats available)', () => pm.expect(found).to.not.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "npk33zsi5sp9hir9"
+        },
+        {
+          "name": "Search different date (day15, NOT in results)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day15}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day15}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); d.setDate(d.getDate() + 15);",
+                  "const pad = n => String(n).padStart(2,'0');",
+                  "pm.collectionVariables.set('day15', d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('tripId NOT in results (wrong date)', () => pm.expect(found).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "xxwpl4imj7cfmems"
+        },
+        {
+          "name": "Search reversed direction Marrakech→Rabat (NOT in results)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Marrakech&arrivalCity=Rabat&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Rabat"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('tripId NOT in results (reversed direction)', () => pm.expect(found).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "fz7lepnmby81eliz"
+        },
+        {
+          "name": "Search city case/spacing (%20settat%20 → MARRAKECH)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=%20settat%20&arrivalCity=MARRAKECH&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": " settat "
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "MARRAKECH"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const tripId = pm.collectionVariables.get('tripId');",
+                  "const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));",
+                  "pm.test('contains tripId (case/space insensitive)', () => pm.expect(found).to.not.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "hxwu0oo9csoqad5i"
+        },
+        {
+          "name": "Search pagination size=1 page=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=1&page=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "1"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('content length <= 1', () => pm.expect(body.content.length).to.be.at.most(1));",
+                  "pm.test('has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                  "pm.test('has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                  "pm.test('has number', () => pm.expect(body).to.have.property('number'));",
+                  "pm.test('has size', () => pm.expect(body).to.have.property('size'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pw68i912j1zn7kqf"
+        },
+        {
+          "name": "Search pagination page=999 (empty content)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&page=999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "page",
+                  "value": "999"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('empty content', () => pm.expect(pm.response.json().content).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pbonqti45qmjupil"
+        },
+        {
+          "name": "Search validation seats=0 (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&seats=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "seats",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "8lbxa8zqjia19jwt"
+        },
+        {
+          "name": "Search validation size=0 (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "c7zdkana023p4bfy"
+        },
+        {
+          "name": "Search validation size=500 (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ej3p2mkw2ckai38b"
+        },
+        {
+          "name": "Search validation page=-1 (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&page=-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "page",
+                  "value": "-1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "n5xmy82qvd3d40lw"
+        },
+        {
+          "name": "Search validation blank departureCity (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=&arrivalCity=Marrakech&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": ""
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ldor92x6or3lxto4"
+        },
+        {
+          "name": "Search validation missing date param (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "dei8sbzwjj552zw5"
+        },
+        {
+          "name": "Search validation malformed date (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date=not-a-date",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "not-a-date"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "vsxe0l8aeekm0uns"
+        },
+        {
+          "name": "Search validation size=50 (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "j78ceigzu68x1k1c"
+        },
+        {
+          "name": "Search validation size=51 (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=51",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                },
+                {
+                  "key": "size",
+                  "value": "51"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "57z5v7x9iy6tgtpo"
+        },
+        {
+          "name": "Search result has required fields",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "departureCity",
+                  "value": "Settat"
+                },
+                {
+                  "key": "arrivalCity",
+                  "value": "Marrakech"
+                },
+                {
+                  "key": "date",
+                  "value": "{{day5}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const trip = body.content[0];",
+                  "if (trip) {",
+                  "    pm.test('has tripId', () => pm.expect(trip).to.have.property('tripId'));",
+                  "    pm.test('has driverName', () => pm.expect(trip).to.have.property('driverName'));",
+                  "    pm.test('has vehicle.id', () => pm.expect(trip.vehicle).to.have.property('id'));",
+                  "    pm.test('has pickupCity', () => pm.expect(trip).to.have.property('pickupCity'));",
+                  "    pm.test('has pickupTime', () => pm.expect(trip).to.have.property('pickupTime'));",
+                  "    pm.test('has dropoffCity', () => pm.expect(trip).to.have.property('dropoffCity'));",
+                  "    pm.test('has dropoffTime', () => pm.expect(trip).to.have.property('dropoffTime'));",
+                  "    pm.test('has segmentPrice', () => pm.expect(trip).to.have.property('segmentPrice'));",
+                  "    pm.test('has remainingSeats', () => pm.expect(trip).to.have.property('remainingSeats'));",
+                  "    pm.test('has departureDate', () => pm.expect(trip).to.have.property('departureDate'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "tarshasro8w3iycy"
+        }
+      ],
+      "description": "Trip search filters, pagination, and validation.",
+      "_postman_id": "wscxhbdw97wlrcko"
+    },
+    {
+      "name": "06 Reservations",
+      "item": [
+        {
+          "name": "Salma books same trip again (409 - duplicate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/6/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "6",
+                "reservations"
+              ]
+            },
+            "description": "Rule: one CONFIRMED reservation per passenger per trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "dhd7gud8qolknvnk"
+        },
+        {
+          "name": "Book numberOfSeats=0 (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mv5uovcxdtln97ng"
+        },
+        {
+          "name": "Book missing numberOfSeats (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "6vf893nbug4ojvru"
+        },
+        {
+          "name": "Mehdi books 3 seats (only 2 free → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "description": "Rule: cannot book more seats than available.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "t2ke0xwwtgc52woq"
+        },
+        {
+          "name": "Book unknown passenger (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/99999/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "99999",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pymjp7x4bje58kzs"
+        },
+        {
+          "name": "Book unknown trip (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": 99999,\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "0suejsgctzt4ouai"
+        },
+        {
+          "name": "Book unknown pickup stop (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": 99999,\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "9zh469r02r39y1h3"
+        },
+        {
+          "name": "Book stop from another trip as pickup (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "description": "Rule: stop must belong to the specified trip. Stop 5 belongs to seed trip 2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": 5,\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "mrtsygtv3n06fe90"
+        },
+        {
+          "name": "Book seed trip 4 (CANCELED → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "description": "Rule: cannot book on a CANCELED trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": 4,\n  \"pickupStopId\": 11,\n  \"dropoffStopId\": 12,\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "c17dtamingob9p0d"
+        },
+        {
+          "name": "Book seed trip 3 (COMPLETED → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "description": "Rule: cannot book on a COMPLETED trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": 3,\n  \"pickupStopId\": 8,\n  \"dropoffStopId\": 10,\n  \"numberOfSeats\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "5w4u94x2dn2he8oy"
+        },
+        {
+          "name": "Imane cancels Salma's reservation (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/8/reservations/{{salmaReservationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "8",
+                "reservations",
+                "{{salmaReservationId}}"
+              ]
+            },
+            "description": "Rule: passenger can only cancel their own reservations."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "50epsj0x72nfx34m"
+        },
+        {
+          "name": "Karim cancels already-canceled reservation (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/7/reservations/{{karimReservationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "7",
+                "reservations",
+                "{{karimReservationId}}"
+              ]
+            },
+            "description": "Rule: cannot cancel an already-canceled reservation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "20sy8t11z6rtmrvo"
+        },
+        {
+          "name": "Cancel unknown reservation (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/6/reservations/99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "6",
+                "reservations",
+                "99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "b24x43fchjgysngc"
+        },
+        {
+          "name": "GET Salma reservations (history, contains salmaReservationId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/6/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "6",
+                "reservations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const salmaResId = pm.collectionVariables.get('salmaReservationId');",
+                  "pm.test('contains salmaReservationId', () => {",
+                  "    pm.expect(body.some(r => String(r.id) === String(salmaResId))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "8vx992kzf1ky2t1h"
+        },
+        {
+          "name": "GET reservations unknown passenger (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/99999/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "99999",
+                "reservations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "ijt9j0s7e4t8utj5"
+        },
+        {
+          "name": "Mehdi books 2 seats Settat→Marrakech (trip FULL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupStopId\": \"{{stopSettat}}\",\n  \"dropoffStopId\": \"{{stopMarrakech}}\",\n  \"numberOfSeats\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('tripStatus FULL', () => pm.expect(body.tripStatus).to.eql('FULL'));",
+                  "pm.collectionVariables.set('mehdiReservationId', body.id);"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "pw6go1dm9gtm4540"
+        },
+        {
+          "name": "Mehdi cancels (trip back to PUBLISHED)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/passengers/9/reservations/{{mehdiReservationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "passengers",
+                "9",
+                "reservations",
+                "{{mehdiReservationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "i28actgckkvcm5tp"
+        },
+        {
+          "name": "GET trip after Mehdi cancels (PUBLISHED again)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status PUBLISHED', () => pm.expect(pm.response.json().status).to.eql('PUBLISHED'));"
+                ]
+              }
+            }
+          ],
+          "response": [],
+          "_postman_id": "oayjpaj0qqs6fdut"
+        }
+      ],
+      "description": "Reservation rules: duplicates, capacity, ownership, trip state, and history.",
+      "_postman_id": "u0qli37sejg3chlk"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+$kind: http-request
+description: "Rule: stop must belong to the specified trip. Stop 5 belongs to seed trip 2."
+url: "{{baseUrl}}/api/passengers/9/reservations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tripId": "{{tripId}}",
+      "pickupStopId": 5,
+      "dropoffStopId": "{{stopMarrakech}}",
+      "numberOfSeats": 1
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 8000

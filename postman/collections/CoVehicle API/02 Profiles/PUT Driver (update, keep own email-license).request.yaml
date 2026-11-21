@@ -1,0 +1,24 @@
+$kind: http-request
+name: PUT Driver (update, keep own email/license)
+description: "Self-excluding uniqueness check: updating with own email/license must succeed."
+url: "{{baseUrl}}/api/drivers/{{newDriverId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "TestUpdated",
+      "lastName": "Driver",
+      "email": "{{newDriverEmail}}",
+      "phone": "0600000099",
+      "licenseNumber": "{{newDriverLicense}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      pm.test('firstName updated', () => pm.expect(pm.response.json().firstName).to.eql('TestUpdated'));
+    language: text/javascript
+order: 4000

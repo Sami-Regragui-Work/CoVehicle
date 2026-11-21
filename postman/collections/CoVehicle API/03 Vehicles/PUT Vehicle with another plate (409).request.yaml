@@ -1,0 +1,21 @@
+$kind: http-request
+description: "Rule: cannot update vehicle to use another vehicle's plate."
+url: "{{baseUrl}}/api/drivers/1/vehicles/{{newVehicleId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "brand": "Ford",
+      "model": "Focus",
+      "color": "Black",
+      "licensePlate": "HAM-1234",
+      "capacity": 4
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 5000

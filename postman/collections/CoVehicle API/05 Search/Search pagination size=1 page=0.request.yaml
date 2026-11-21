@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&size=1&page=0"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  size: "1"
+  page: "0"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('content length <= 1', () => pm.expect(body.content.length).to.be.at.most(1));
+      pm.test('has totalElements', () => pm.expect(body).to.have.property('totalElements'));
+      pm.test('has totalPages', () => pm.expect(body).to.have.property('totalPages'));
+      pm.test('has number', () => pm.expect(body).to.have.property('number'));
+      pm.test('has size', () => pm.expect(body).to.have.property('size'));
+    language: text/javascript
+order: 9000

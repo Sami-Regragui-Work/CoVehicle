@@ -1,0 +1,3 @@
+$kind: collection
+description: Exactly the brief's scenario table in order. S10 and S11 depend on seed data. To rerun S11 the database must be reseeded.
+order: 2000

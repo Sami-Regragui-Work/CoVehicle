@@ -1,0 +1,19 @@
+$kind: http-request
+description: Verifies the created trip is retrievable with correct data.
+url: "{{baseUrl}}/api/trips/{{tripId}}"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('remainingSeats 3', () => pm.expect(body.remainingSeats).to.eql(3));
+      pm.test('stops in order', () => {
+          for (let i = 0; i < body.stops.length - 1; i++) {
+              pm.expect(body.stops[i].stopOrder).to.be.lessThan(body.stops[i+1].stopOrder);
+          }
+      });
+    language: text/javascript
+order: 3000

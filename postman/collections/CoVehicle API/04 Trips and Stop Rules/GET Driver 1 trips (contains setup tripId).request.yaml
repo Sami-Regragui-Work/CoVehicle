@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const tripId = pm.collectionVariables.get('tripId');
+      pm.test('contains setup tripId', () => {
+          pm.expect(pm.response.json().some(t => String(t.id) === String(tripId))).to.be.true;
+      });
+    language: text/javascript
+order: 13000

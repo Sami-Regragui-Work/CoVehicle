@@ -1,0 +1,32 @@
+$kind: http-request
+description: Verifies results are sorted by departureDate ascending and both trips are present.
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const content = body.content;
+      pm.test('at least 2 results', () => pm.expect(content.length).to.be.at.least(2));
+      pm.test('sorted by departureDate ascending', () => {
+          for (let i = 1; i < content.length; i++) {
+              pm.expect(new Date(content[i].departureDate).getTime()).to.be.at.least(new Date(content[i-1].departureDate).getTime());
+          }
+      });
+      pm.test('setup tripId present', () => {
+          const tripId = pm.collectionVariables.get('tripId');
+          pm.expect(content.some(t => String(t.tripId) === String(tripId))).to.be.true;
+      });
+      pm.test('second tripId present', () => {
+          const secondTripId = pm.collectionVariables.get('secondTripId');
+          pm.expect(content.some(t => String(t.tripId) === String(secondTripId))).to.be.true;
+      });
+    language: text/javascript
+order: 5000

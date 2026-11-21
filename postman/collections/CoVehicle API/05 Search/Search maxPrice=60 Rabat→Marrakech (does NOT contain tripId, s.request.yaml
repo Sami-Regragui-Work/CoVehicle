@@ -1,0 +1,20 @@
+$kind: http-request
+name: Search maxPrice=60 Rabat→Marrakech (does NOT contain tripId, segment 120)
+url: "{{baseUrl}}/api/trips/search?departureCity=Rabat&arrivalCity=Marrakech&date={{day5}}&maxPrice=60"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Rabat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  maxPrice: "60"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const tripId = pm.collectionVariables.get('tripId');
+      const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));
+      pm.test('tripId NOT in results (segment 120 > 60)', () => pm.expect(found).to.be.undefined);
+    language: text/javascript
+order: 2000

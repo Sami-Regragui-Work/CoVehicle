@@ -1,0 +1,13 @@
+$kind: http-request
+description: Verifies trip status after driver cancellation.
+url: "{{baseUrl}}/api/trips/2"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      pm.test('Trip 2 CANCELED', () => pm.expect(pm.response.json().status).to.eql('CANCELED'));
+    language: text/javascript
+order: 14000

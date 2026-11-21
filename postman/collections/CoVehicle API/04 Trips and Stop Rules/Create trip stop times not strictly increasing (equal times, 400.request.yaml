@@ -1,0 +1,30 @@
+$kind: http-request
+name: Create trip stop times not strictly increasing (equal times, 400)
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": 1,
+      "seatsOffered": 3,
+      "stops": [
+        {
+          "city": "Rabat",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Casablanca",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 40
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 3000

@@ -1,0 +1,21 @@
+$kind: http-request
+description: "Rule: email must be unique across all users."
+url: "{{baseUrl}}/api/drivers"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "Dup",
+      "lastName": "Driver",
+      "email": "hamid@covehicle.local",
+      "phone": "0600000099",
+      "licenseNumber": "DUP-999"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 8000

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/passengers/6/reservations"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const salmaResId = pm.collectionVariables.get('salmaReservationId');
+      pm.test('contains salmaReservationId', () => {
+          pm.expect(body.some(r => String(r.id) === String(salmaResId))).to.be.true;
+      });
+    language: text/javascript
+order: 14000

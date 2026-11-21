@@ -1,0 +1,14 @@
+$kind: http-request
+description: Sends malformed JSON to trigger parse error.
+url: "{{baseUrl}}/api/drivers"
+method: POST
+headers:
+  Content-Type: application/json
+scripts:
+  - type: beforeRequest
+    code: "pm.request.body = { mode: 'raw', raw: '{bad' };"
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('Status 400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 12000

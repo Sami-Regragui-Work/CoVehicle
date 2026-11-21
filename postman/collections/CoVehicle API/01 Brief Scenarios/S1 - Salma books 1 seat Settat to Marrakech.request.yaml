@@ -1,0 +1,26 @@
+$kind: http-request
+description: "Rule: passenger can book available seats on a PUBLISHED trip."
+url: "{{baseUrl}}/api/passengers/6/reservations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tripId": "{{tripId}}",
+      "pickupStopId": "{{stopSettat}}",
+      "dropoffStopId": "{{stopMarrakech}}",
+      "numberOfSeats": 1
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('totalAmount 50.00', () => pm.expect(Number(body.totalAmount)).to.eql(50));
+      pm.test('remainingSeats 2', () => pm.expect(body.remainingSeats).to.eql(2));
+      pm.test('status CONFIRMED', () => pm.expect(body.status).to.eql('CONFIRMED'));
+      pm.collectionVariables.set('salmaReservationId', body.id);
+    language: text/javascript
+order: 1000

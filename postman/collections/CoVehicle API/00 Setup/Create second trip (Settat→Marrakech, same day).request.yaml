@@ -1,0 +1,34 @@
+$kind: http-request
+description: Creates a second published trip on the same day for sorting tests.
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": "{{secondVehicleId}}",
+      "seatsOffered": 3,
+      "stops": [
+        {
+          "city": "Settat",
+          "arrivalTime": "{{day5}}T18:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Marrakech",
+          "arrivalTime": "{{day5}}T20:00:00",
+          "priceFromStart": 45
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('Status PUBLISHED', () => pm.expect(body.status).to.eql('PUBLISHED'));
+      pm.collectionVariables.set('secondTripId', body.id);
+    language: text/javascript
+order: 4000

@@ -1,0 +1,15 @@
+$kind: http-request
+description: Verifies cascade cancellation of passenger reservations when driver cancels trip.
+url: "{{baseUrl}}/api/passengers/6/reservations"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      const r = body.find(r => r.tripId === 2);
+      pm.test('Salma reservation on trip 2 is CANCELED', () => pm.expect(r.status).to.eql('CANCELED'));
+    language: text/javascript
+order: 13000

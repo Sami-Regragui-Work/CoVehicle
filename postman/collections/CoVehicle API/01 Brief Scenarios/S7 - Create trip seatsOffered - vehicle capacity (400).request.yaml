@@ -1,0 +1,46 @@
+$kind: http-request
+name: S7 - Create trip seatsOffered > vehicle capacity (400)
+description: "Rule: seatsOffered cannot exceed vehicle capacity (Dacia Logan capacity=4)."
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": 1,
+      "seatsOffered": 5,
+      "stops": [
+        {
+          "city": "Rabat",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Casablanca",
+          "arrivalTime": "{{day5}}T18:15:00",
+          "priceFromStart": 40
+        },
+        {
+          "city": "Settat",
+          "arrivalTime": "{{day5}}T19:15:00",
+          "priceFromStart": 70
+        },
+        {
+          "city": "Marrakech",
+          "arrivalTime": "{{day5}}T21:30:00",
+          "priceFromStart": 120
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 400', () => pm.response.to.have.status(400));
+      pm.test('detail mentions 4 places au maximum', () => {
+          const body = pm.response.json();
+          pm.expect(body.detail).to.include('4 places au maximum');
+      });
+    language: text/javascript
+order: 8000

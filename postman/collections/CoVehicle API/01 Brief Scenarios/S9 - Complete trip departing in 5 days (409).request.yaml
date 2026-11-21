@@ -1,0 +1,11 @@
+$kind: http-request
+description: "Rule: cannot complete a trip that has not yet departed."
+url: "{{baseUrl}}/api/drivers/1/trips/{{tripId}}/complete"
+method: POST
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 10000

@@ -1,0 +1,14 @@
+$kind: http-request
+description: Sends POST with no body to trigger missing body error.
+url: "{{baseUrl}}/api/drivers"
+method: POST
+headers:
+  Content-Type: application/json
+scripts:
+  - type: beforeRequest
+    code: delete pm.request.body;
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('Status 400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 13000

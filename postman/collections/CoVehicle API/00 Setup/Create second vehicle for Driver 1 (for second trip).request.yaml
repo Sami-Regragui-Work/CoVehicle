@@ -1,0 +1,23 @@
+$kind: http-request
+description: Creates a second vehicle so we can publish a second trip on the same day without double-booking.
+url: "{{baseUrl}}/api/drivers/1/vehicles"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "brand": "Renault",
+      "model": "Megane",
+      "color": "Blue",
+      "licensePlate": "SEC-{{$timestamp}}",
+      "capacity": 4
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('secondVehicleId', pm.response.json().id);
+    language: text/javascript
+order: 1000

@@ -1,0 +1,70 @@
+$kind: collection
+description: |-
+  Complete test collection for the CoVehicle REST API (Spring Boot).
+
+  ## Prerequisites
+  This collection assumes a freshly seeded database. Requests S10 and S11 (folder 01) depend on seed data and cannot be rerun without reseeding.
+
+  ## Run order
+  Folders must be run in order: 00 → 01 → 02 → 03 → 04 → 05 → 06.
+  Folder 00 creates the main test trip and saves its id and stop ids as collection variables.
+  All subsequent folders depend on those variables.
+
+  ## Seed-dependent requests
+  - **S10** (folder 01): depends on seed trip 5 departing in ~2 hours. Cannot be rerun without reseeding.
+  - **S11** (folder 01): Youssef cancels seed trip 2. A second run returns 409 because the trip is already CANCELED. Reseed the database to rerun.
+
+  ## Reseeding
+  Drop and recreate the database, then restart the app with the `local` or `docker` profile.
+  The seeder runs automatically when the drivers table is empty.
+variables:
+  day5: ""
+  tripId: ""
+  stopRabat: ""
+  stopCasa: ""
+  stopSettat: ""
+  stopMarrakech: ""
+  salmaReservationId: ""
+  karimReservationId: ""
+  newDriverId: ""
+  newDriverEmail: ""
+  newDriverLicense: ""
+  newPassengerId: ""
+  newPassengerEmail: ""
+  newVehicleId: ""
+  newVehiclePlate: ""
+  deletableVehicleId: ""
+  mehdiReservationId: ""
+  day15: ""
+  secondVehicleId: ""
+  secondTripId: ""
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      // Compute day5 = today + 5 days as yyyy-MM-dd
+      const d = new Date();
+      d.setDate(d.getDate() + 5);
+      const pad = n => String(n).padStart(2,'0');
+      const day5 = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+      pm.collectionVariables.set('day5', day5);
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      const status = pm.response.code;
+      if (status >= 400) {
+          let body;
+          try { body = pm.response.json(); } catch(e) { return; }
+          pm.test('Error response is ProblemDetail', function () {
+              pm.expect(body).to.have.property('timestamp');
+              pm.expect(body.status).to.eql(status);
+              pm.expect(body.type).to.match(/^urn:covehicle:error:/);
+              pm.expect(body).to.have.property('detail');
+              pm.expect(body.instance).to.eql(pm.request.url.getPath());
+          });
+          if (status === 400 && body.fieldErrors) {
+              pm.test('Validation error has fieldErrors', function () {
+                  pm.expect(body.fieldErrors).to.be.an('object');
+              });
+          }
+      }
+    language: text/javascript

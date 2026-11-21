@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/1/trips/{{tripId}}/reservations"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('contains Salma CONFIRMED', () => {
+          pm.expect(body.some(r => r.passengerId === 6 && r.status === 'CONFIRMED')).to.be.true;
+      });
+      pm.test('contains Karim CANCELED', () => {
+          pm.expect(body.some(r => r.passengerId === 7 && r.status === 'CANCELED')).to.be.true;
+      });
+    language: text/javascript
+order: 14000

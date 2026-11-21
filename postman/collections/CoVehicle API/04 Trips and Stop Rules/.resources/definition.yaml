@@ -1,0 +1,3 @@
+$kind: collection
+description: Trip creation validation rules and state-transition guards.
+order: 5000

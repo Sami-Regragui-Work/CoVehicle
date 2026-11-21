@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/trips/search?departureCity=Settat&arrivalCity=Marrakech&date={{day5}}&seats=2"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  departureCity: Settat
+  arrivalCity: Marrakech
+  date: "{{day5}}"
+  seats: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const tripId = pm.collectionVariables.get('tripId');
+      const found = pm.response.json().content.find(t => String(t.tripId) === String(tripId));
+      pm.test('contains tripId (2 seats available)', () => pm.expect(found).to.not.be.undefined);
+    language: text/javascript
+order: 5000

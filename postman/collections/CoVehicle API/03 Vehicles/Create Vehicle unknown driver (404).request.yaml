@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/99999/vehicles"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "brand": "Ford",
+      "model": "Ka",
+      "color": "Red",
+      "licensePlate": "KA-002",
+      "capacity": 4
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 404', () => pm.response.to.have.status(404));
+    language: text/javascript
+order: 9000

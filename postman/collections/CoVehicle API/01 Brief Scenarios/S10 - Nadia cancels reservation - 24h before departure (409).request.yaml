@@ -1,0 +1,18 @@
+$kind: http-request
+name: S10 - Nadia cancels reservation < 24h before departure (409)
+description: "Rule: cannot cancel a reservation less than 24 hours before departure. Depends on seed (trip 5 departs in ~2h)."
+url: "{{baseUrl}}/api/passengers/10/reservations/6"
+method: DELETE
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 409', () => pm.response.to.have.status(409));
+      pm.test('detail mentions 24 hours rule', () => {
+          const body = pm.response.json();
+          pm.expect(body.detail.toLowerCase()).to.satisfy(d =>
+              d.includes('24') || d.includes('heure') || d.includes('hour'));
+      });
+    language: text/javascript
+order: 11000

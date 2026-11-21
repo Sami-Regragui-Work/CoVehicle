@@ -1,0 +1,11 @@
+$kind: http-request
+description: "Rule: cannot delete a vehicle that has associated trips."
+url: "{{baseUrl}}/api/drivers/1/vehicles/1"
+method: DELETE
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 15000

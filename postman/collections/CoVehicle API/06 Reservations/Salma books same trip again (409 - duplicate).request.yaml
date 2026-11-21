@@ -1,0 +1,20 @@
+$kind: http-request
+description: "Rule: one CONFIRMED reservation per passenger per trip."
+url: "{{baseUrl}}/api/passengers/6/reservations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tripId": "{{tripId}}",
+      "pickupStopId": "{{stopSettat}}",
+      "dropoffStopId": "{{stopMarrakech}}",
+      "numberOfSeats": 1
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 1000

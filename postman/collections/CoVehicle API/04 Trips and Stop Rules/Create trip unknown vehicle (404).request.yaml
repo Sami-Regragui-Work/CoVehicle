@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers/1/trips"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "vehicleId": 99999,
+      "seatsOffered": 3,
+      "stops": [
+        {
+          "city": "Rabat",
+          "arrivalTime": "{{day5}}T17:00:00",
+          "priceFromStart": 0
+        },
+        {
+          "city": "Casablanca",
+          "arrivalTime": "{{day5}}T18:00:00",
+          "priceFromStart": 40
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 404', () => pm.response.to.have.status(404));
+    language: text/javascript
+order: 11000

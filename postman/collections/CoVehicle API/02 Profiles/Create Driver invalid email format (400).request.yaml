@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/drivers"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "Bad",
+      "lastName": "Email",
+      "email": "not-an-email",
+      "phone": "0600000099",
+      "licenseNumber": "BAD-001"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 11000

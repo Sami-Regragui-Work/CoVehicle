@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/passengers"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "firstName": "Dup",
+      "lastName": "Pass",
+      "email": "salma@covehicle.local",
+      "phone": "0610000099"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 409', () => pm.response.to.have.status(409));
+    language: text/javascript
+order: 22000
