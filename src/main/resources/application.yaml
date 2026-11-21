@@ -1,6 +1,6 @@
 app:
   database:
-    port: 5432
+    port: ${DB_PORT:5432}
     name: ${DB_NAME:cv_db}
     url-prefix: jdbc:postgresql://${app.database.host}:${app.database.port}/
     auto-create: false

@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: covehicle-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cv_db}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    secrets:
+      - DB_PASSWORD
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - covehicle_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-cv_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    # started only with: docker compose --profile app up
+    profiles: ["app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_NAME: ${DB_NAME:-cv_db}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+    secrets:
+      - DB_PASSWORD
+    ports:
+      - "8080:8080"
+
+secrets:
+  DB_PASSWORD:
+    file: ./secret/db.password.txt
+
+volumes:
+  covehicle_postgres_data:

@@ -1,0 +1,10 @@
+spring:
+  config:
+    import: optional:configtree:/run/secrets/
+
+app:
+  database:
+    host: postgres
+    # container-to-container port, never the host-mapped DB_PORT
+    port: 5432
+    auto-create: false
