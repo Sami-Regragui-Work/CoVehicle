@@ -3,6 +3,7 @@ package org.multivehicle.covehicle.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.multivehicle.covehicle.dto.request.TripRequest;
+import org.multivehicle.covehicle.dto.response.ReservationResponse;
 import org.multivehicle.covehicle.dto.response.TripResponse;
 import org.multivehicle.covehicle.dto.response.TripSearchResult;
 import org.multivehicle.covehicle.service.TripService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -42,5 +44,28 @@ public class TripController {
     @GetMapping("/api/trips/{id}")
     public ResponseEntity<TripResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(tripService.getById(id));
+    }
+
+    @GetMapping("/api/drivers/{driverId}/trips")
+    public ResponseEntity<List<TripResponse>> listByDriver(@PathVariable Long driverId) {
+        return ResponseEntity.ok(tripService.listByDriver(driverId));
+    }
+
+    @GetMapping("/api/drivers/{driverId}/trips/{tripId}/reservations")
+    public ResponseEntity<List<ReservationResponse>> listReservations(
+            @PathVariable Long driverId, @PathVariable Long tripId) {
+        return ResponseEntity.ok(tripService.listReservations(driverId, tripId));
+    }
+
+    @PostMapping("/api/drivers/{driverId}/trips/{tripId}/complete")
+    public ResponseEntity<Void> complete(@PathVariable Long driverId, @PathVariable Long tripId) {
+        tripService.complete(driverId, tripId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/drivers/{driverId}/trips/{tripId}/cancel")
+    public ResponseEntity<Void> cancel(@PathVariable Long driverId, @PathVariable Long tripId) {
+        tripService.cancel(driverId, tripId);
+        return ResponseEntity.noContent().build();
     }
 }

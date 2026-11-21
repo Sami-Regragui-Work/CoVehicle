@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.multivehicle.covehicle.dto.request.StopRequest;
 import org.multivehicle.covehicle.dto.request.TripRequest;
+import org.multivehicle.covehicle.dto.response.ReservationResponse;
 import org.multivehicle.covehicle.dto.response.TripResponse;
 import org.multivehicle.covehicle.dto.response.TripSearchResult;
 import org.multivehicle.covehicle.entity.Stop;
@@ -14,17 +15,21 @@ import org.multivehicle.covehicle.entity.enums.TripStatus;
 import org.multivehicle.covehicle.exception.badrequest.InvalidSearchCriteriaException;
 import org.multivehicle.covehicle.exception.badrequest.InvalidStopSequenceException;
 import org.multivehicle.covehicle.exception.badrequest.SeatsExceedCapacityException;
+import org.multivehicle.covehicle.exception.conflict.IllegalTripStateException;
+import org.multivehicle.covehicle.exception.conflict.TripNotStartedException;
+import org.multivehicle.covehicle.exception.forbidden.NotTripOwnerException;
 import org.multivehicle.covehicle.exception.forbidden.NotVehicleOwnerException;
 import org.multivehicle.covehicle.exception.notfound.ResourceNotFoundException;
+import org.multivehicle.covehicle.mapper.ReservationMapper;
 import org.multivehicle.covehicle.mapper.StopMapper;
 import org.multivehicle.covehicle.mapper.TripMapper;
 import org.multivehicle.covehicle.repository.DriverRepository;
 import org.multivehicle.covehicle.repository.ReservationRepository;
 import org.multivehicle.covehicle.repository.TripRepository;
 import org.multivehicle.covehicle.repository.VehicleRepository;
+import org.multivehicle.covehicle.repository.projection.TripReservedSeats;
 import org.multivehicle.covehicle.service.TripService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,8 +41,10 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -51,6 +58,7 @@ public class TripServiceImpl implements TripService {
     private final ReservationRepository reservationRepository;
     private final TripMapper tripMapper;
     private final StopMapper stopMapper;
+    private final ReservationMapper reservationMapper;
 
     @Override
     @Transactional
@@ -131,25 +139,79 @@ public class TripServiceImpl implements TripService {
         Pageable pageable = PageRequest.of(page, size);
 
         if (maxPrice == null) {
-            Page<TripSearchResult> result = tripRepository.search(departure, arrival, startDate, endDate, seats,
+            return tripRepository.search(departure, arrival, startDate, endDate, seats,
                     TripStatus.PUBLISHED, ReservationStatus.CONFIRMED, pageable);
-            return withForcedCount(result, pageable,
-                    () -> tripRepository.countSearch(departure, arrival, startDate, endDate, seats,
-                            TripStatus.PUBLISHED, ReservationStatus.CONFIRMED));
         }
-        Page<TripSearchResult> result = tripRepository.searchWithMaxPrice(departure, arrival, startDate, endDate,
+        return tripRepository.searchWithMaxPrice(departure, arrival, startDate, endDate,
                 seats, maxPrice, TripStatus.PUBLISHED, ReservationStatus.CONFIRMED, pageable);
-        return withForcedCount(result, pageable,
-                () -> tripRepository.countSearchWithMaxPrice(departure, arrival, startDate, endDate, seats, maxPrice,
-                        TripStatus.PUBLISHED, ReservationStatus.CONFIRMED));
     }
 
-    private Page<TripSearchResult> withForcedCount(Page<TripSearchResult> page, Pageable pageable,
-                                                   java.util.function.LongSupplier countSupplier) {
-        if (page.getContent().size() >= pageable.getPageSize()) {
-            return page;
+    @Override
+    public List<TripResponse> listByDriver(Long driverId) {
+        List<Trip> trips = tripRepository.findByDriverIdWithDetails(driverId);
+
+        Map<Long, Long> reservedByTrip = reservationRepository
+                .sumReservedSeatsByDriver(driverId, ReservationStatus.CONFIRMED).stream()
+                .collect(Collectors.toMap(TripReservedSeats::tripId, TripReservedSeats::reservedSeats));
+
+        return trips.stream()
+                .map(trip -> {
+                    long reserved = reservedByTrip.getOrDefault(trip.getId(), 0L);
+                    return tripMapper.toResponse(trip, trip.getSeatsOffered() - Math.toIntExact(reserved));
+                })
+                .toList();
+    }
+
+    @Override
+    public List<ReservationResponse> listReservations(Long driverId, Long tripId) {
+        Trip trip = findOwnedTrip(driverId, tripId);
+
+        long reserved = reservationRepository.sumReservedSeats(tripId, ReservationStatus.CONFIRMED);
+        int remainingSeats = trip.getSeatsOffered() - Math.toIntExact(reserved);
+
+        return reservationRepository.findByTripIdWithDetails(tripId).stream()
+                .map(reservation -> reservationMapper.toResponse(reservation, remainingSeats))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void complete(Long driverId, Long tripId) {
+        Trip trip = findOwnedTrip(driverId, tripId);
+
+        if (trip.getStatus() != TripStatus.PUBLISHED && trip.getStatus() != TripStatus.FULL) {
+            throw new IllegalTripStateException("Trip is " + trip.getStatus() + " and cannot be completed");
         }
-        return new PageImpl<>(page.getContent(), pageable, countSupplier.getAsLong());
+        if (trip.getDepartureDate().isAfter(LocalDateTime.now())) {
+            throw new TripNotStartedException();
+        }
+
+        trip.setStatus(TripStatus.COMPLETED);
+        log.info("Trip {} completed by driver {}", tripId, driverId);
+    }
+
+    @Override
+    @Transactional
+    public void cancel(Long driverId, Long tripId) {
+        Trip trip = findOwnedTrip(driverId, tripId);
+
+        if (trip.getStatus() != TripStatus.PUBLISHED && trip.getStatus() != TripStatus.FULL) {
+            throw new IllegalTripStateException("Trip is " + trip.getStatus() + " and cannot be canceled");
+        }
+
+        trip.setStatus(TripStatus.CANCELED);
+        int canceledReservations = reservationRepository.cancelConfirmedByTripId(tripId);
+        log.info("Trip {} canceled by driver {}, {} reservation(s) canceled", tripId, driverId, canceledReservations);
+    }
+
+    private Trip findOwnedTrip(Long driverId, Long tripId) {
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found with id: " + tripId));
+
+        if (!Objects.equals(trip.getVehicle().getDriver().getId(), driverId)) {
+            throw new NotTripOwnerException();
+        }
+        return trip;
     }
 
     private void validateStops(List<StopRequest> stops) {

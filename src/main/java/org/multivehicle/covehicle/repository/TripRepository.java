@@ -78,27 +78,6 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
             @Param("confirmedStatus") ReservationStatus confirmedStatus,
             Pageable pageable);
 
-    @Query("SELECT COUNT(t) " + SEARCH_FROM_WHERE)
-    long countSearch(
-            @Param("departureCity") String departureCity,
-            @Param("arrivalCity") String arrivalCity,
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
-            @Param("seats") int seats,
-            @Param("publishedStatus") TripStatus publishedStatus,
-            @Param("confirmedStatus") ReservationStatus confirmedStatus);
-
-    @Query("SELECT COUNT(t) " + SEARCH_FROM_WHERE + " AND (dropoff.priceFromStart - pickup.priceFromStart) <= :maxPrice")
-    long countSearchWithMaxPrice(
-            @Param("departureCity") String departureCity,
-            @Param("arrivalCity") String arrivalCity,
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
-            @Param("seats") int seats,
-            @Param("maxPrice") BigDecimal maxPrice,
-            @Param("publishedStatus") TripStatus publishedStatus,
-            @Param("confirmedStatus") ReservationStatus confirmedStatus);
-
     @Query("""
             SELECT t FROM Trip t
             JOIN FETCH t.vehicle v
