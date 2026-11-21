@@ -6,8 +6,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.multivehicle.covehicle.dto.request.StopRequest;
 import org.multivehicle.covehicle.dto.request.TripRequest;
 import org.multivehicle.covehicle.entity.Stop;
@@ -43,7 +41,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class TripServiceImplTest {
 
     private static final Long DRIVER_ID = 5L;
@@ -93,23 +90,26 @@ class TripServiceImplTest {
         );
     }
 
-    private void stubPublishSuccess(int seats, List<StopRequest> stops) {
-        Vehicle v = vehicle(VEHICLE_ID, driver(DRIVER_ID), 4);
+    private void stubDriverAndVehicle(Vehicle vehicle) {
         when(driverRepository.existsById(DRIVER_ID)).thenReturn(true);
-        when(vehicleRepository.findById(VEHICLE_ID)).thenReturn(Optional.of(v));
+        when(vehicleRepository.findById(VEHICLE_ID)).thenReturn(Optional.of(vehicle));
+    }
+
+    private void stubPublishSuccess() {
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
         when(tripMapper.toEntity(any(TripRequest.class))).thenReturn(Trip.builder().build());
         when(stopMapper.toEntity(any(StopRequest.class))).thenAnswer(invocation -> {
-            StopRequest s = invocation.getArgument(0);
+            StopRequest stop = invocation.getArgument(0);
             return Stop.builder()
-                    .city(s.city())
-                    .arrivalTime(s.arrivalTime())
-                    .priceFromStart(s.priceFromStart())
+                    .city(stop.city())
+                    .arrivalTime(stop.arrivalTime())
+                    .priceFromStart(stop.priceFromStart())
                     .build();
         });
         when(tripRepository.save(any(Trip.class))).thenAnswer(invocation -> {
-            Trip t = invocation.getArgument(0);
-            t.setId(42L);
-            return t;
+            Trip trip = invocation.getArgument(0);
+            trip.setId(42L);
+            return trip;
         });
         when(tripMapper.toResponse(any(Trip.class), anyInt())).thenReturn(null);
     }
@@ -117,7 +117,7 @@ class TripServiceImplTest {
     @Test
     void publishCreatesTripWithOrderedAndTrimmedStops() {
         List<StopRequest> stops = validStops();
-        stubPublishSuccess(2, stops);
+        stubPublishSuccess();
 
         tripService.publish(DRIVER_ID, request(2, stops));
 
@@ -134,28 +134,26 @@ class TripServiceImplTest {
 
     @Test
     void publishRejectsSeatsAboveVehicleCapacity() {
-        Vehicle v = vehicle(VEHICLE_ID, driver(DRIVER_ID), 4);
-        when(driverRepository.existsById(DRIVER_ID)).thenReturn(true);
-        when(vehicleRepository.findById(VEHICLE_ID)).thenReturn(Optional.of(v));
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
 
         assertThatThrownBy(() -> tripService.publish(DRIVER_ID, request(5, validStops())))
-                .isInstanceOf(SeatsExceedCapacityException.class);
+                .isInstanceOf(SeatsExceedCapacityException.class)
+                .hasMessageContaining("4 places au maximum");
         verify(tripRepository, never()).save(any());
     }
 
     @Test
     void publishRejectsVehicleOwnedByAnotherDriver() {
-        Vehicle v = vehicle(VEHICLE_ID, driver(99L), 4);
-        when(driverRepository.existsById(DRIVER_ID)).thenReturn(true);
-        when(vehicleRepository.findById(VEHICLE_ID)).thenReturn(Optional.of(v));
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(99L), 4));
 
         assertThatThrownBy(() -> tripService.publish(DRIVER_ID, request(2, validStops())))
                 .isInstanceOf(NotVehicleOwnerException.class);
+        verify(tripRepository, never()).save(any());
     }
 
     @Test
     void publishRejectsFewerThanTwoStops() {
-        stubPublishSuccess(2, validStops());
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
         LocalDateTime start = LocalDateTime.now().plusDays(2).withNano(0);
         TripRequest oneStop = request(2, List.of(new StopRequest("Rabat", start, BigDecimal.ZERO)));
 
@@ -166,7 +164,7 @@ class TripServiceImplTest {
 
     @Test
     void publishRejectsPastDeparture() {
-        stubPublishSuccess(2, validStops());
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
         LocalDateTime past = LocalDateTime.now().minusHours(1).withNano(0);
         TripRequest pastTrip = request(2, List.of(
                 new StopRequest("Rabat", past, BigDecimal.ZERO),
@@ -180,7 +178,7 @@ class TripServiceImplTest {
 
     @Test
     void publishRejectsDuplicateCity() {
-        stubPublishSuccess(2, validStops());
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
         LocalDateTime start = LocalDateTime.now().plusDays(2).withNano(0);
         TripRequest duplicate = request(2, List.of(
                 new StopRequest("Rabat", start, BigDecimal.ZERO),
@@ -194,7 +192,7 @@ class TripServiceImplTest {
 
     @Test
     void publishRejectsNonIncreasingPrices() {
-        stubPublishSuccess(2, validStops());
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
         LocalDateTime start = LocalDateTime.now().plusDays(2).withNano(0);
         TripRequest prices = request(2, List.of(
                 new StopRequest("Rabat", start, BigDecimal.ZERO),
@@ -204,6 +202,34 @@ class TripServiceImplTest {
         assertThatThrownBy(() -> tripService.publish(DRIVER_ID, prices))
                 .isInstanceOf(InvalidStopSequenceException.class)
                 .hasMessageContaining("prices must be strictly increasing");
+    }
+
+    @Test
+    void publishRejectsNonIncreasingStopTimes() {
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
+        LocalDateTime start = LocalDateTime.now().plusDays(2).withNano(0);
+        TripRequest times = request(2, List.of(
+                new StopRequest("Rabat", start, BigDecimal.ZERO),
+                new StopRequest("Fes", start, new BigDecimal("50"))
+        ));
+
+        assertThatThrownBy(() -> tripService.publish(DRIVER_ID, times))
+                .isInstanceOf(InvalidStopSequenceException.class)
+                .hasMessageContaining("strictly increasing");
+    }
+
+    @Test
+    void publishRejectsFirstStopWithNonZeroPrice() {
+        stubDriverAndVehicle(vehicle(VEHICLE_ID, driver(DRIVER_ID), 4));
+        LocalDateTime start = LocalDateTime.now().plusDays(2).withNano(0);
+        TripRequest prices = request(2, List.of(
+                new StopRequest("Rabat", start, new BigDecimal("10")),
+                new StopRequest("Fes", start.plusHours(2), new BigDecimal("50"))
+        ));
+
+        assertThatThrownBy(() -> tripService.publish(DRIVER_ID, prices))
+                .isInstanceOf(InvalidStopSequenceException.class)
+                .hasMessageContaining("first stop price must be 0");
     }
 
     @Test
