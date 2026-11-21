@@ -38,4 +38,10 @@ public class VehicleController {
     public ResponseEntity<VehicleResponse> update(@PathVariable Long driverId, @PathVariable Long vehicleId, @Valid @RequestBody VehicleRequest request) {
         return ResponseEntity.ok(vehicleService.update(driverId, vehicleId, request));
     }
+
+    @DeleteMapping("/{vehicleId}")
+    public ResponseEntity<Void> delete(@PathVariable Long driverId, @PathVariable Long vehicleId) {
+        vehicleService.delete(driverId, vehicleId);
+        return ResponseEntity.noContent().build();
+    }
 }

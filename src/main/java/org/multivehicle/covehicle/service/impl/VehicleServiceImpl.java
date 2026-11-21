@@ -7,10 +7,12 @@ import org.multivehicle.covehicle.dto.response.VehicleResponse;
 import org.multivehicle.covehicle.entity.Vehicle;
 import org.multivehicle.covehicle.entity.users.Driver;
 import org.multivehicle.covehicle.exception.conflict.DuplicateResourceException;
+import org.multivehicle.covehicle.exception.conflict.VehicleInUseException;
 import org.multivehicle.covehicle.exception.forbidden.NotVehicleOwnerException;
 import org.multivehicle.covehicle.exception.notfound.ResourceNotFoundException;
 import org.multivehicle.covehicle.mapper.VehicleMapper;
 import org.multivehicle.covehicle.repository.DriverRepository;
+import org.multivehicle.covehicle.repository.TripRepository;
 import org.multivehicle.covehicle.repository.VehicleRepository;
 import org.multivehicle.covehicle.service.VehicleService;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final DriverRepository driverRepository;
+    private final TripRepository tripRepository;
     private final VehicleMapper vehicleMapper;
 
     @Override
@@ -69,6 +72,21 @@ public class VehicleServiceImpl implements VehicleService {
 
         log.info("Vehicle updated with id {}", vehicleId);
         return vehicleMapper.toResponse(vehicle);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long driverId, Long vehicleId) {
+        ensureDriverExists(driverId);
+        Vehicle vehicle = find(vehicleId);
+        verifyOwnership(vehicle, driverId);
+
+        if (tripRepository.existsByVehicleId(vehicleId)) {
+            throw new VehicleInUseException();
+        }
+
+        vehicleRepository.delete(vehicle);
+        log.info("Vehicle deleted with id {}", vehicleId);
     }
 
     @Override
