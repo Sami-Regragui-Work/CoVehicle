@@ -11,7 +11,10 @@ import org.multivehicle.covehicle.exception.internalservererror.InternalServerEr
 import org.multivehicle.covehicle.exception.notfound.NotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -42,13 +45,47 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
+    protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+        String path = getWebRequestPath(request);
+        log.warn("Malformed JSON on {}: {}", path, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(this.problem(HttpStatus.BAD_REQUEST, "Malformed or unreadable request body", path));
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMissingServletRequestParameter(MissingServletRequestParameterException ex, @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+        String path = getWebRequestPath(request);
+        log.warn("Missing parameter on {}: {}", path, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(this.problem(HttpStatus.BAD_REQUEST, "Missing or invalid request parameter", path));
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleTypeMismatch(org.springframework.beans.TypeMismatchException ex, @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+        String path = getWebRequestPath(request);
+        log.warn("Type mismatch on {}: {}", path, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(this.problem(HttpStatus.BAD_REQUEST, "Invalid value for a request parameter", path));
+    }
+
+    @Override
+    protected @Nullable ResponseEntity<Object> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException ex, @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+        String path = getWebRequestPath(request);
+        log.warn("Method not allowed on {}: {}", path, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(this.problem(HttpStatus.METHOD_NOT_ALLOWED, ex.getMessage(), path));
+    }
+
+    @Override
     protected @Nullable ResponseEntity<Object> handleExceptionInternal(@NonNull Exception ex, @Nullable Object body, @NonNull HttpHeaders headers, @NonNull HttpStatusCode statusCode, @NonNull WebRequest request) {
         ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
         if (response != null && response.getBody() instanceof ProblemDetail pd) {
-            if (statusCode.is4xxClientError()) log.warn("{} on {}: {}", statusCode, getWebRequestPath(request), pd.getDetail());
+            String path = getWebRequestPath(request);
+            if (statusCode.is4xxClientError()) log.warn("{} on {}: {}", statusCode, path, pd.getDetail());
             if (pd.getProperties() == null || !pd.getProperties().containsKey("timestamp")) pd.setProperty("timestamp", Instant.now());
-            if (pd.getInstance() == null) pd.setInstance(URI.create(getWebRequestPath(request)));
-            if (pd.getType().toString().equals("about:blank")) pd.setType(URI.create(TYPE_PREFIX + slug(statusCode)));
+            pd.setInstance(URI.create(path));
+            pd.setType(URI.create(TYPE_PREFIX + slug(statusCode)));
+        } else if (response != null) {
+            String path = getWebRequestPath(request);
+            if (statusCode.is4xxClientError()) log.warn("{} on {}: {}", statusCode, path, ex.getMessage());
+            HttpStatus status = HttpStatus.valueOf(statusCode.value());
+            return ResponseEntity.status(statusCode).body(this.problem(status, ex.getMessage(), path));
         }
         return response;
     }
