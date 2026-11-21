@@ -1,5 +1,6 @@
 package org.multivehicle.covehicle.repository;
 
+import jakarta.persistence.LockModeType;
 import org.multivehicle.covehicle.dto.response.TripSearchResult;
 import org.multivehicle.covehicle.entity.Trip;
 import org.multivehicle.covehicle.entity.enums.ReservationStatus;
@@ -106,4 +107,18 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
             WHERE t.id = :id
             """)
     Optional<Trip> findDetailById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Trip t WHERE t.id = :id")
+    Optional<Trip> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("""
+            SELECT DISTINCT t FROM Trip t
+            JOIN FETCH t.vehicle v
+            JOIN FETCH v.driver
+            JOIN FETCH t.stops
+            WHERE v.driver.id = :driverId
+            ORDER BY t.departureDate DESC, t.id DESC
+            """)
+    List<Trip> findByDriverIdWithDetails(@Param("driverId") Long driverId);
 }
